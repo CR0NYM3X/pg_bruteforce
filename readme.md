@@ -1,3 +1,26 @@
+## Agregar opcion para validar 
+```bash
+1.-  Alcance al puerto.
+2.- (no existe el usuario o la ip no esta registrada en pg_hba) FATAL:  no pg_hba.conf entry for host "127.0.0.1", user "maria", database "postgres", no encryption
+3.- (la contraseña esta mal , esto quiere decir que si existe el usuario y esta dado de alta la ip en el pg_hba) Password authentication failed
+
+
+Agregarle la opcion de validar nombres de usuarios de fuerza bruta.
+Agregarle opcion de contraseñas de fuerza bruta.
+
+
+postgres@serv-pruebas /sysx/data17 $ psql -h 127.0.0.1 -p 5432 -d postgres -U test
+Password for user test:
+psql: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "test"
+
+postgres@serv-pruebas /sysx/data17 $ psql -h 127.0.0.1 -p 5432 -d postgres -U maria
+psql: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  no pg_hba.conf entry for host "127.0.0.1", user "maria", database "postgres", no encryption
+
+postgres@serv-pruebas /sysx/data17 $ psql -h 127.0.0.1 -p 5432 -d postgres -U test
+psql: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  no pg_hba.conf entry for host "127.0.0.1", user "test", database "postgres", no encryption
+
+```
+
 # pg_bruteforce
 
 **pg_bruteforce** es un script ligero en Bash diseñado para realizar pruebas de fuerza bruta  sobre   PostgreSQL. Su objetivo principal es validar la eficacia de configuraciones de seguridad como `auth_delay` y la extensión `credcheck`.
