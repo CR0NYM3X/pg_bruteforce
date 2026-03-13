@@ -63,6 +63,3 @@ Si descubres que el servidor solo aplica delay a usuarios que existen, puedes us
 
 * Los usuarios que **no existen** te darán error rápido `[X]`.
 * Los usuarios que **sí existen** te darán `[!] TIMEOUT`.
-
-¡Felicidades! Acabas de encontrar usuarios válidos saltándote la espera, porque el hecho de que el servidor "se quede pensando" es la prueba de que el usuario es real.
- 
