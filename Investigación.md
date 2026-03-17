@@ -126,4 +126,56 @@ Para que tu manual sea de un verdadero experto, debes recomendar lo siguiente:
 * **No pongas tiempos excesivos:** Un delay de 1 o 2 segundos es suficiente para frenar un ataque sin dejar los slots ocupados demasiado tiempo.
 * **Reservar conexiones para Superusuarios:** Mantén siempre un margen en `superuser_reserved_connections` (por defecto son 3) para que tú puedas entrar a corregir problemas aunque los slots normales estén saturados.
  
+---
 
+
+
+
+
+
+# Otras recomendaciones 
+
+Desde la perspectiva de un **Pentester** y **Red Teamer**, mi respuesta es un **SÍ rotundo**, pero bajo una condición: **no puede ser tu única defensa.**
+
+Si me pones a auditar tu servidor y no tienes un delay, mi script de fuerza bruta irá a la velocidad de mi procesador. Si activas el delay, me obligas a cambiar de estrategia. Aquí te doy mi análisis "desde el otro lado de la trinchera" para tu manual:
+
+ 
+
+## 1. ¿Por qué SÍ implementarlo? (El punto de vista del atacante)
+Como pentester, mi recurso más valioso no es el software, es el **tiempo**.
+
+* **Rompe la automatización:** La mayoría de las herramientas de ataque masivo (como *Hydra* o *ncrack*) tienen "timeouts" por defecto. Si tu servidor tarda en responder, muchas herramientas asumen que el servicio se cayó o que hay un firewall bloqueando, y saltan al siguiente objetivo.
+* **Aumenta el costo de cómputo:** Si intento hacer un ataque de "Relleno de Credenciales" (probar millones de usuarios/claves filtrados en la Dark Web), y cada intento fallido me cuesta 1 segundo, tardaría años en terminar. **Me rindo antes de empezar.**
+* **Genera una firma detectable:** Un flujo constante de conexiones en estado `authentication` que duran exactamente 1000ms es una anomalía clarísima. Esto hace que sea muy fácil para mí (o para un sistema de monitoreo) darme cuenta de que algo anda mal.
+
+
+ 
+## 2. ¿Cuál es el peligro real? (El fallo que yo explotaría)
+Si tú solo pones el delay y te olvidas del resto, yo no intentaré adivinar tu contraseña. Cambiaré mi ataque de **Fuerza Bruta** a un **Ataque de Denegación de Servicio (DoS)**.
+
+Si veo que tienes un delay de 1 segundo y `max_connections = 100`, lanzaré 100 conexiones falsas por segundo. Mantendré tu tabla de conexiones llena perpetuamente. **He tumbado tu servicio sin siquiera entrar.**
+ 
+
+## 3. Mi Recomendación de Experto: El "Sándwich de Seguridad"
+
+Para que este manual sea de calidad profesional, recomienda implementar el delay como parte de esta arquitectura de tres capas:
+
+### Capa 1: El Delay (`auth_delay` / `credcheck`)
+* **Función:** Fricción inmediata.
+* **Configuración:** No más de **1 a 2 segundos**. Suficiente para frenar un script, pero no tanto como para mantener los slots de conexión ocupados por una eternidad.
+
+### Capa 2: Reserva de Administración (`superuser_reserved_connections`)
+* **Función:** Garantizar que tú puedas entrar a limpiar la casa.
+* **Configuración:** Súbelo de 3 (default) a **5 o 10**. Si el atacante llena los slots públicos, tú aún tienes una "puerta trasera" para entrar y matar esos procesos.
+
+### Capa 3: Bloqueo de IP Exterior (Fail2Ban o Firewall)
+* **Función:** Expulsar al atacante fuera del motor.
+* **Lógica:** Si una IP falla 5 veces seguidas, el sistema operativo (Iptables/NFTables) corta su acceso por 1 hora.
+* **Resultado:** Esto libera el slot en PostgreSQL. El atacante ya no llega ni a pedir la contraseña.
+ 
+
+## 4. Conclusión para el cierre de tu manual
+
+> **"¿Implementar retardo de autenticación? Sí.** Es una medida de bajo costo y alta efectividad contra ataques de descubrimiento de credenciales. Sin embargo, **debe ser tratada como una medida de disuasión y no de bloqueo definitivo.** La implementación técnica debe ir acompañada obligatoriamente de un monitoreo de conexiones a nivel de sistema operativo para prevenir ataques de agotamiento de recursos (DoS)."
+
+ 
