@@ -190,13 +190,41 @@ Para que este manual sea de calidad profesional, recomienda implementar el delay
 * **Función:** Garantizar que tú puedas entrar a limpiar la casa.
 * **Configuración:** Súbelo de 3 (default) a **5 o 10**. Si el atacante llena los slots públicos, tú aún tienes una "puerta trasera" para entrar y matar esos procesos.
 
-### Capa 3: Bloqueo de IP Exterior (Fail2Ban o Firewall)
-* **Función:** Expulsar al atacante fuera del motor.
-* **Lógica:** Si una IP falla 5 veces seguidas, el sistema operativo (Iptables/NFTables) corta su acceso por 1 hora.
-* **Resultado:** Esto libera el slot en PostgreSQL. El atacante ya no llega ni a pedir la contraseña.
+  
+
+## 4. Ajuste Fino del Retardo (SLA vs. Seguridad)
+En sistemas de alta concurrencia, el tiempo es oro. Un delay de `1000ms` es eterno cuando tienes miles de peticiones por segundo.
+* **Recomendación:** Reduce el delay a un rango de **200ms a 500ms**. 
+* **Por qué:** Es suficiente para romper la velocidad de un script automático de fuerza bruta, pero libera el slot de conexión 5 veces más rápido que un segundo completo, disminuyendo el riesgo de saturar `max_connections`.
+
+## 5. Implementar un "Pooler" de Conexiones (PgBouncer)
+En sistemas críticos, exponer PostgreSQL directamente al tráfico es un riesgo.
+* **Recomendación:** Coloca **PgBouncer** frente a la base de datos en modo `transaction pooling`.
+* **Ventaja:** PgBouncer puede manejar miles de conexiones de clientes mientras mantiene solo unas pocas cientos hacia la base de datos. Si un atacante lanza un ataque de fuerza bruta, el "golpe" lo recibe el pooler y no el motor de base de datos directamente, protegiendo los descriptores de archivos del sistema operativo.
+
+
+## 6. Estrategia de "Offloading" de Seguridad (Fail2Ban / Firewall)
+No dejes que PostgreSQL haga todo el trabajo sucio.
+* **Recomendación:** La base de datos solo debe detectar el fallo. Una herramienta externa debe ejecutar el castigo.
+* **Configuración:** Configura un script que escanee los logs de Postgres. Si una IP falla 3 veces en un minuto, bloquéala en el **Firewall (iptables/nftables)**. 
+* **Resultado:** El tráfico malicioso se corta en la "puerta de la calle" (Capa de Red), y ya no llega a consumir ni un solo proceso de Postgres.
+
  
 
-## 4. Conclusión para el cierre de tu manual
+## 7. Monitoreo de "Slots" en Tiempo Real
+En sistemas críticos, debes anticiparte al llenado de conexiones. Crea una alerta que se dispare cuando:
+* `Procesos en estado "authentication" (ps)` + `Conexiones activas (SQL)` > **80% de `max_connections`**.
+
+## 8. Segmentación de Red
+* **Recomendación:** Nunca permitas conexiones desde el mundo exterior (0.0.0.0/0) directamente a la base de datos.
+* **Por qué:** En un sistema crítico, la base de datos solo debe hablar con los servidores de aplicaciones. Si el ataque viene de adentro (un servidor de app comprometido), el delay te da tiempo, pero si viene de afuera, el firewall es tu mejor amigo.
+
+ 
+
+### Resumen para el Manual: "Escenarios de Alta Disponibilidad"
+
+> "En entornos de alta concurrencia, la seguridad debe ser **asincrónica**. El uso de `auth_delay` debe ser minimalista (máximo 500ms) y actuar solo como una señal para que sistemas de firewall perimetral tomen acciones definitivas. Nunca confíe la disponibilidad de un sistema crítico únicamente a una extensión de base de datos."
+
 
 > **"¿Implementar retardo de autenticación? Sí.** Es una medida de bajo costo y alta efectividad contra ataques de descubrimiento de credenciales. Sin embargo, **debe ser tratada como una medida de disuasión y no de bloqueo definitivo.** La implementación técnica debe ir acompañada obligatoriamente de un monitoreo de conexiones a nivel de sistema operativo para prevenir ataques de agotamiento de recursos (DoS)."
 
