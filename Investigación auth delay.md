@@ -106,12 +106,13 @@ Imagina que tu configuración es:
 * `max_connections = 100`
 * `auth_delay.milliseconds = 5000` (5 segundos)
 
+
+
 Si un atacante lanza **100 intentos fallidos en menos de un segundo**, habrá creado 100 procesos de PostgreSQL que se quedarán "durmiendo" por 5 segundos. 
 
 **Resultado:** Durante esos 5 segundos, **nadie más (ni siquiera tú como administrador)** podrá conectarse a la base de datos, porque el servidor dirá que ya llegó al límite de conexiones, aunque en `pg_stat_activity` no veas a nadie "logueado".
 
  
-
 ### 3. Resumen para el Manual (Sección: Advertencia Técnica)
 
 > **¡IMPORTANTE!**
@@ -125,6 +126,27 @@ Si un atacante lanza **100 intentos fallidos en menos de un segundo**, habrá cr
 Para que tu manual sea de un verdadero experto, debes recomendar lo siguiente:
 * **No pongas tiempos excesivos:** Un delay de 1 o 2 segundos es suficiente para frenar un ataque sin dejar los slots ocupados demasiado tiempo.
 * **Reservar conexiones para Superusuarios:** Mantén siempre un margen en `superuser_reserved_connections` (por defecto son 3) para que tú puedas entrar a corregir problemas aunque los slots normales estén saturados.
+
+
+### **⚠️ El Punto Ciego: Invisibilidad en el Monitoreo Estándar**
+
+**`El Riesgo Crítico:`** Los procesos que se encuentran en estado de retardo (*sleep*) por fallos de autenticación **no son registrados en la vista `pg_stat_activity`**. Esto crea una falsa sensación de seguridad para el administrador que depende exclusivamente de herramientas SQL para monitorear la salud del servidor.
+
+Si tu estrategia de monitoreo se basa únicamente en consultas como:
+```sql
+-- ¡CUIDADO! Esta consulta NO mostrará los ataques de fuerza bruta en curso
+SELECT count(*) FROM pg_stat_activity;
+```
+
+Estarás ignorando conexiones que, aunque no han iniciado sesión, ya están **secuestrando** slots de `max_connections`. 
+
+#### **Detección Real (Nivel Sistema Operativo)**
+Para identificar un ataque de agotamiento de recursos mientras el retardo está activo, es obligatorio auditar directamente los procesos del sistema. La diferencia entre lo que dice la base de datos y lo que dice el sistema operativo es la clave para detectar un ataque de denegación de servicio (DoS):
+
+```bash
+# Ejecuta esto para ver la realidad de las conexiones en fase de autenticación:
+ps -ef | grep "postgres:" | grep "authentication"
+```
  
 ---
 
