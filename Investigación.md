@@ -1,4 +1,4 @@
-
+# Ventajas de implementar Delay
  
 ## 1. Mitigación de Ataques de Fuerza Bruta (Brute Force)
 La razón principal es que un atacante puede probar miles de combinaciones de contraseñas por segundo si el servidor responde instantáneamente.
@@ -29,7 +29,7 @@ Como cada intento fallido mantiene un proceso de Postgres "ocupado" esperando a 
 
 
 ---
-
+# Fromas de configurar un Delay
  
 ## 1. Módulo `auth_delay` (Nativo)
 Es una herramienta estándar que viene incluida en la distribución de PostgreSQL (dentro de `contrib`). Su función es pausar el proceso del servidor por un tiempo determinado antes de reportar el error al cliente.
@@ -79,3 +79,51 @@ Es vital entender que si configuras un retardo de `1000ms` (1 segundo) y tienes 
 > No utilices estos retardos como tu única línea de defensa. Combínalos con herramientas a nivel de red o sistema operativo como **Fail2Ban** (que bloquea la IP en el firewall tras N intentos) para liberar los recursos de PostgreSQL.
 
  
+
+---
+
+# Consecuencias y recomendaciones de configurar un delay 
+
+Aunque el usuario no haya logrado entrar (porque su contraseña es incorrecta y el `auth_delay` lo tiene "congelado"), ese intento **ya está consumiendo un slot de `max_connections` y recursos del sistema.**
+
+porque es el riesgo de seguridad más crítico de estas extensiones:
+
+### 1. El Ciclo de "Secuestro" de la Conexión
+Cuando alguien intenta conectarse, ocurre lo siguiente en el motor:
+
+1.  **Llegada:** El proceso padre de PostgreSQL (`postmaster`) recibe la petición de red.
+2.  **Bifurcación (Fork):** El `postmaster` crea un nuevo proceso hijo (un *backend*) para atender a ese usuario específico. **En este preciso instante, se resta 1 al contador de `max_connections`**.
+3.  **Validación:** El nuevo proceso le pide la contraseña al usuario.
+4.  **El Retraso (`auth_delay`):** Si la clave es mala, el proceso recibe la orden de "dormirse" (por ejemplo, 1000ms).
+5.  **Ocupación Real:** Durante ese segundo de sueño, el proceso **sigue vivo**. Ocupa memoria RAM y mantiene el slot de `max_connections` bloqueado.
+6.  **Liberación:** Solo cuando termina el tiempo del delay y el proceso envía el error al cliente, el proceso muere y el slot de `max_connections` queda libre para otra persona.
+
+
+ 
+
+### 2. Por qué esto es un peligro (Escenario de Ataque)
+Imagina que tu configuración es:
+* `max_connections = 100`
+* `auth_delay.milliseconds = 5000` (5 segundos)
+
+Si un atacante lanza **100 intentos fallidos en menos de un segundo**, habrá creado 100 procesos de PostgreSQL que se quedarán "durmiendo" por 5 segundos. 
+
+**Resultado:** Durante esos 5 segundos, **nadie más (ni siquiera tú como administrador)** podrá conectarse a la base de datos, porque el servidor dirá que ya llegó al límite de conexiones, aunque en `pg_stat_activity` no veas a nadie "logueado".
+
+ 
+
+### 3. Resumen para el Manual (Sección: Advertencia Técnica)
+
+> **¡IMPORTANTE!**
+> Los parámetros de retraso de autenticación (`auth_delay` / `credcheck`) actúan **después** de que el proceso de backend ha sido asignado. 
+> * **Consumo de Slots:** Cada intento fallido ocupa un lugar en `max_connections` durante la duración total del retardo.
+> * **Riesgo de DoS:** Un atacante no necesita adivinar tu contraseña para tirar el servicio; solo necesita lanzar tantos intentos fallidos como conexiones permitidas tengas, saturando el servidor rápidamente.
+
+ 
+
+### 4. ¿Cómo mitigar este "efecto secundario"?
+Para que tu manual sea de un verdadero experto, debes recomendar lo siguiente:
+* **No pongas tiempos excesivos:** Un delay de 1 o 2 segundos es suficiente para frenar un ataque sin dejar los slots ocupados demasiado tiempo.
+* **Reservar conexiones para Superusuarios:** Mantén siempre un margen en `superuser_reserved_connections` (por defecto son 3) para que tú puedas entrar a corregir problemas aunque los slots normales estén saturados.
+ 
+
