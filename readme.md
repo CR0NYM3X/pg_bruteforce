@@ -398,8 +398,14 @@ El cuello de botella suele ser el propio servidor PostgreSQL o la red. Si el ser
 Si el servidor tiene `credcheck` u otras extensiones de penalización progresiva, sí. El modo `-A` detecta esta situación y lo advierte. En ese caso, reduce `-w 1` y aumenta `-T`.
 
 **¿Qué lista de usuarios recomiendas para empezar?**
-- [SecLists - postgres-usernames](https://github.com/danielmiessler/SecLists/blob/master/Usernames/postgres-usernames.txt)
+- [SecLists - postgres-usernames](https://github.com/danielmiessler/SecLists/blob/699d20f40e6e5f32db6d59957e7abc0630113d37/Usernames/cirt-default-usernames.txt#L685)
 - Lista básica: `postgres`, `admin`, `pgadmin`, `dbadmin`, `superuser`, `pgsql`, `root`
+
+
+**¿Qué lista de contraseña recomiendas para empezar?**
+- [SecLists - postgres-usernames](https://github.com/kkrypt0nn/wordlists/tree/main/wordlists/passwords)
+
+
 
 **¿Puedo usar esto contra PostgreSQL en Docker?**
 Sí, siempre que el puerto esté expuesto. Ajusta `-h localhost -p 5433` (o el puerto que hayas mapeado).
