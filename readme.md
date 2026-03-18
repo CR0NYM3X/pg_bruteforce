@@ -403,7 +403,7 @@ Si el servidor tiene `credcheck` u otras extensiones de penalización progresiva
 
 
 **¿Qué lista de contraseña recomiendas para empezar?**
-- [SecLists - postgres-usernames](https://github.com/kkrypt0nn/wordlists/tree/main/wordlists/passwords)
+- [Password list](https://github.com/kkrypt0nn/wordlists/tree/main/wordlists/passwords)
 
 
 
