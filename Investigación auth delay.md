@@ -147,7 +147,44 @@ Para identificar un ataque de agotamiento de recursos mientras el retardo está 
 # Ejecuta esto para ver la realidad de las conexiones en fase de autenticación:
 ps -ef | grep "postgres:" | grep "authentication"
 ```
- 
+
+## ¿Qué es el Postmaster?
+Es el **proceso padre** (el "supervisor") de todo el cluster de la base de datos. Es el primer proceso que se levanta cuando inicias el servicio y el último en morir cuando lo apagas. Su PID (Process ID) es el que normalmente encuentras en el archivo `postmaster.pid` dentro del directorio de datos (`PGDATA`).
+
+### Funciones Principales
+
+### 1. Gestión de Conexiones (El "Hostess" de la red)
+El Postmaster escucha en el puerto configurado (por defecto **5432**). Cuando un cliente intenta conectarse:
+1.  Recibe la solicitud de conexión.
+2.  Realiza una validación rápida (basada en el archivo `pg_hba.conf`).
+3.  **Realiza un `fork()`**: Crea un proceso hijo llamado **Backend** (o *client backend*) dedicado exclusivamente a ese usuario.
+4.  Le entrega el control de la conexión al proceso hijo y el Postmaster vuelve a escuchar nuevas peticiones.
+
+
+
+### 2. Gestión de Memoria Compartida
+Al arrancar, el Postmaster es el encargado de reservar y asignar los bloques de memoria compartida (**Shared Buffer Pool**, **WAL Buffers**, etc.) que todos los procesos hijos utilizarán para comunicarse y trabajar con los datos.
+
+### 3. Supervisión y Recuperación (El "Guardián")
+Si un proceso hijo (un backend) falla de manera catastrófica (por ejemplo, un *segmentation fault*):
+1.  El Postmaster detecta que el hijo murió inesperadamente.
+2.  Por seguridad, **asume que la memoria compartida podría estar corrupta**.
+3.  Cierra todos los demás procesos hijos activos.
+4.  Reinicia el sistema de recuperación y vuelve a levantar todo el cluster.
+
+
+
+## Relación Crítica con `auth_delay` y `credcheck`
+
+Aquí es donde tu manual se vuelve profesional. Debes explicar que el Postmaster **no es el proceso que "duerme"** durante el delay.
+
+* **El Postmaster nunca se detiene:** Si el Postmaster se detuviera 1 segundo por cada fallo, nadie más en todo el mundo podría intentar conectarse durante ese segundo.
+* **El proceso que se detiene es el "Hijo" (Backend):** Como explicamos antes, el Postmaster hace el `fork()`, crea al hijo, y es ese **hijo** el que ejecuta la lógica de `auth_delay`.
+* **El problema de los recursos:** Aunque el Postmaster siga libre, cada `fork()` que hace para un ataque de fuerza bruta consume recursos del sistema operativo (un nuevo PID, memoria, etc.). 
+
+> **Dato de experto para el manual:** El Postmaster tiene un límite rígido. Si recibe demasiadas peticiones de conexión demasiado rápido (como un ataque masivo), puede saturar la tabla de procesos del Sistema Operativo antes de que el `auth_delay` libere los slots antiguos.
+
+
 ---
 
 
