@@ -287,3 +287,8 @@ En sistemas críticos, debes anticiparte al llenado de conexiones. Crea una aler
 > **"¿Implementar retardo de autenticación? Sí.** Es una medida de bajo costo y alta efectividad contra ataques de descubrimiento de credenciales. Sin embargo, **debe ser tratada como una medida de disuasión y no de bloqueo definitivo.** La implementación técnica debe ir acompañada obligatoriamente de un monitoreo de conexiones a nivel de sistema operativo para prevenir ataques de agotamiento de recursos (DoS)."
 
  
+
+# Conclusión:
+Tras las pruebas realizadas, se determinó que habilitar el delay presenta un compromiso entre seguridad y disponibilidad. Si bien dificulta ataques de fuerza bruta, su uso inadecuado puede derivar en intermitencias críticas o una denegación de servicio (DoS) al saturar las conexiones de PostgreSQL. Por ello, se recomienda no emplearlo como única barrera. La estrategia óptima consiste en un enfoque de defensa en profundidad, integrando herramientas a nivel de red como Fail2Ban para bloquear IPs maliciosas directamente en el firewall y así preservar los recursos del sistema.
+
+
