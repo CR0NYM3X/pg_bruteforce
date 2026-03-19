@@ -215,6 +215,27 @@ Si tú solo pones el delay y te olvidas del resto, yo no intentaré adivinar tu 
 Si veo que tienes un delay de 1 segundo y `max_connections = 100`, lanzaré 100 conexiones falsas por segundo. Mantendré tu tabla de conexiones llena perpetuamente. **He tumbado tu servicio sin siquiera entrar.**
  
 
+## Errores 
+```
+# Parámetro que te indica cuantos procesos son los reservador 
+show superuser_reserved_connections;
++--------------------------------+
+| superuser_reserved_connections |
++--------------------------------+
+| 3                              |
++--------------------------------+
+(1 row)
+
+## Usuario normal intenta ingresar y le marca error porque se hizo un ataque DoS 
+postgres@Prueba-dba /sysx/data17 $ PGPASSWORD="123123" psql -X  -h 127.0.0.1 -p 5432 -U user_test -c "select 1"
+psql: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  remaining connection slots are reserved for roles with the SUPERUSER attribute
+
+## Usuario superusuario  intenta ingresar y le marca error porque se hizo un ataque DoS 
+postgres@Pruebas-dba /sysx/data17 $ PGPASSWORD="123123" psql -X  -h 127.0.0.1 -p 5432 -U postgres -c "select 1"
+psql: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  sorry, too many clients already
+```
+
+
 ## 3. Mi Recomendación de Experto: El "Sándwich de Seguridad"
 
 Para que este manual sea de calidad profesional, recomienda implementar el delay como parte de esta arquitectura de tres capas:
